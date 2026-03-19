@@ -1,10 +1,10 @@
 # ROHolidays (React Native CLI, New Architecture)
 
-A bare React Native app (no Expo) that displays Romanian public holidays and the Orthodox calendar (red/black cross), with configurable local notifications. New Architecture (Fabric + TurboModules + JSI) is enabled on both platforms; Hermes remains the default JS engine.
+A bare React Native app (no Expo) that shows Romanian public holidays and Orthodox calendar events (red/black cross), with configurable local notifications. New Architecture (Fabric + TurboModules + JSI) is enabled on both platforms; Hermes stays the default JS engine.
 
 ## Prerequisites
-- Node >= 20.19.4 (tested on 22.20.0; if you hit native dependency issues, use Node 20 LTS).
-- Yarn (Corepack enabled in this repo, `packageManager: "yarn@3.6.4"`; linker is set to `node-modules` in `.yarnrc.yml`).
+- Node >= 20.19.4 (tested on 22.20.0; if native dependencies are unstable, use Node 20 LTS).
+- Yarn (Corepack enabled in this repo, `packageManager: "yarn@3.6.4"`; linker set to `node-modules` in `.yarnrc.yml`).
 - iOS: Xcode + CocoaPods (`bundle install && bundle exec pod install` in `ios/`).
 - Android: Android SDK, emulator/device, Java 17.
 
@@ -23,23 +23,26 @@ src/
   features/   # home, calendar, settings
   data/       # HTTP client, Zod schemas, repositories, TanStack Query hooks
   domain/     # types and mappers (red/black cross, dedup)
-  services/   # notifications (Notifee), settings (AsyncStorage), date utils
+  services/   # notifications (Notifee), date utils
+  core/       # env, MMKV storage, query client, TurboModule contract
   ui/         # UI components, theming
 android/ ios/ # real native projects, newArchEnabled + Hermes ON
 ```
-- TanStack Query + AsyncStorage persister (cache fallback when the network fails).
+- TanStack Query + MMKV persister (sync, fast, cache fallback when network fails).
+- Zustand for client state (settings), with selector pattern to minimize unnecessary re-renders.
 - Clean-ish layering: data (fetch + validation), domain (mappers/heuristics), features (UI + useEvents).
-- Comments in native config files explain why New Architecture/Hermes stay enabled.
+- Native/config files include comments explaining why New Architecture/Hermes stay enabled.
 
 ## Data sources
 - Legal: `https://date.nager.at/api/v3/PublicHolidays/{year}/RO` (fallback: OpenHolidays).
-- Orthodox: `https://orthocal.info/api/feasts?year=YYYY&locale=ro`; special 2025 red-cross list: `https://azisespala.ro/data/holidays-2025.json`.
+- Primary Orthodox source: `https://azisespala.ro/api/holidays?year=YYYY` (static fallback: `https://azisespala.ro/data/holidays-YYYY.json`).
+- Secondary Orthodox fallback: `https://orthocal.info/api/feasts?year=YYYY&locale=ro`.
 - Unified `Event` model includes `kind`, `level` (RED/BLACK), `source`, `metadata`. Dedup is by id; Orthodox level is derived transparently via heuristics (see `src/domain/heuristics.ts`).
 
 ## Local notifications (Notifee)
 - Permissions are requested at runtime; on Android the `holidays` channel is created.
 - Two notifications are scheduled per event (one day before at hour X, and on the event day at hour Y). IDs are based on `event.id` to avoid duplicates.
-- Settings are persisted in AsyncStorage; notifications are rescheduled when settings change.
+- Settings are persisted in MMKV; notifications are rescheduled when settings change.
 
 ## Background refresh (optional)
 `react-native-background-fetch` is not included to avoid extra native setup. The stub in `src/services/background.ts` shows the integration steps; if needed, install the package and complete the integration (note: iOS is throttled and does not guarantee exact-time execution).
@@ -50,7 +53,7 @@ android/ ios/ # real native projects, newArchEnabled + Hermes ON
 - Benefits: lower UI latency, native interop via JSI, future compatibility (legacy renderer deprecated in RN 0.82+).
 
 ## Testing
-- Jest + React Native Testing Library; fetch/Notifee/AsyncStorage mocks in `jest.setup.js`.
+- Jest + React Native Testing Library; fetch/Notifee/MMKV + gesture/reanimated mocks in `jest.setup.js`.
 - Core coverage: red/black cross mapping, dedup, source mappers (see `__tests__/domain.test.ts`).
 
 ## Troubleshooting
@@ -60,6 +63,6 @@ android/ ios/ # real native projects, newArchEnabled + Hermes ON
 - If Watchman is unavailable (permissions conflict), run tests with `JEST_DISABLE_WATCHMAN=1 yarn test --runInBand`.
 
 ## Limitations & transparency
-- Orthocal red/black mapping is heuristic; the UI explicitly mentions it may differ from printed local calendars.
-- Azisespala covers only 2025; for other years the app relies on Orthocal.
+- For years where `azisespala` payload is incomplete, the app falls back to static files and then Orthocal.
+- Red/black classification remains source-signal based (`isHoliday`, `†`, `noWashing`).
 - Background refresh is not enabled by default (see section above).

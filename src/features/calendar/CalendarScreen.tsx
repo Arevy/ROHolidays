@@ -5,6 +5,7 @@ import { CalendarMonth } from '../../ui/components/CalendarMonth';
 import { Screen } from '../../ui/components/Screen';
 import { dayjs } from '../../services/date';
 import { Event } from '../../domain/types';
+import { isNoWashingDay } from '../../domain/eventMetadata';
 
 export default function CalendarScreen() {
   const { data, isLoading, error } = useEvents();
@@ -38,7 +39,7 @@ export default function CalendarScreen() {
             ? 'Cruce neagră — nu se spală haine.'
             : null;
         const washing =
-          ev.metadata?.noWashing || ev.level
+          isNoWashingDay(ev) || ev.level
             ? 'Nu se spală (post/duminică/sărbătoare).'
             : 'Se pot spăla haine.';
         const weekend = isWeekend ? ' (pică în weekend)' : '';
@@ -90,13 +91,13 @@ export default function CalendarScreen() {
             fontWeight: '700',
             textAlign: 'center',
             color: data.some(
-              ev => ev.dateISO === todayISO && (ev.metadata as any)?.noWashing,
+              ev => ev.dateISO === todayISO && isNoWashingDay(ev),
             )
               ? '#b91c1c'
               : '#16a34a',
           }}>
           {data.some(
-            ev => ev.dateISO === todayISO && (ev.metadata as any)?.noWashing,
+            ev => ev.dateISO === todayISO && isNoWashingDay(ev),
           )
             ? 'NU se spală haine azi'
             : 'Se pot spăla haine azi'}
@@ -111,6 +112,7 @@ export default function CalendarScreen() {
       >
         <Button
           title="◀"
+          accessibilityLabel="Previous month"
           onPress={() => setMonthCursor(monthCursor.subtract(1, 'month'))}
         />
         <Text
@@ -124,6 +126,7 @@ export default function CalendarScreen() {
         </Text>
         <Button
           title="▶"
+          accessibilityLabel="Next month"
           onPress={() => setMonthCursor(monthCursor.add(1, 'month'))}
         />
       </View>

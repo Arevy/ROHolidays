@@ -65,46 +65,60 @@ export async function scheduleNotifications({ events, settings }: ScheduleOpts) 
   // Avoid duplicate notifications by reusing event.id-based notification IDs.
   await notifee.cancelAllNotifications();
 
+  const now = Date.now();
   const tasks: Promise<unknown>[] = [];
   for (const event of targets) {
-    const dayBefore: TimestampTrigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: buildLocalTimestamp(event.dateISO, settings.dayBeforeHour, -1),
-    };
-    const sameDay: TimestampTrigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: buildLocalTimestamp(event.dateISO, settings.sameDayHour, 0),
-    };
+    const candidates = [
+      {
+        id: `${event.id}-pre`,
+        timestamp: buildLocalTimestamp(event.dateISO, settings.dayBeforeHour, -1),
+      },
+      {
+        id: `${event.id}-day`,
+        timestamp: buildLocalTimestamp(event.dateISO, settings.sameDayHour, 0),
+      },
+    ];
 
-    tasks.push(
-      notifee.createTriggerNotification(
-        {
-          id: `${event.id}-pre`,
-          title: event.title,
-          body: formatBody(event),
-          android: { channelId: CHANNEL_ID },
-        },
-        dayBefore,
-      ),
-    );
-    tasks.push(
-      notifee.createTriggerNotification(
-        {
-          id: `${event.id}-day`,
-          title: event.title,
-          body: formatBody(event),
-          android: { channelId: CHANNEL_ID },
-        },
-        sameDay,
-      ),
-    );
+    for (const candidate of candidates) {
+      // [SENIOR_INSIGHT] Notifee rejects past timestamps. We only schedule future triggers
+      // to avoid runtime failures when "day before" is already elapsed.
+      if (candidate.timestamp <= now + 1000) {
+        continue;
+      }
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: candidate.timestamp,
+      };
+      tasks.push(
+        notifee.createTriggerNotification(
+          {
+            id: candidate.id,
+            title: event.title,
+            body: formatBody(event),
+            android: { channelId: CHANNEL_ID },
+          },
+          trigger,
+        ),
+      );
+    }
   }
 
+  if (tasks.length === 0) {
+    return;
+  }
   await Promise.all(tasks);
 }
 
 function buildLocalTimestamp(dateISO: string, hour: number, dayOffset: number) {
-  const date = new Date(dateISO);
+  const normalizeNumber = (value: number | undefined, fallback: number): number =>
+    typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+  const [yearRaw, monthRaw, dayRaw] = dateISO.split('-').map(Number);
+  const year = normalizeNumber(yearRaw, 1970);
+  const month = normalizeNumber(monthRaw, 1);
+  const day = normalizeNumber(dayRaw, 1);
+  // Build local time explicitly; parsing YYYY-MM-DD with Date() uses UTC and can shift days by timezone.
+  const date = new Date(year, month - 1, day);
   date.setDate(date.getDate() + dayOffset);
   date.setHours(hour, 0, 0, 0);
   return date.getTime();

@@ -1,6 +1,8 @@
+import { env } from '../core/config/env';
+
 type FetchOptions = RequestInit & { timeoutMs?: number };
 
-const DEFAULT_TIMEOUT = 10_000;
+const DEFAULT_TIMEOUT = env.apiTimeoutMs;
 
 export async function fetchJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
   const controller = new AbortController();

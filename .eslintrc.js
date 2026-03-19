@@ -9,6 +9,7 @@ module.exports = {
     'simple-import-sort/imports': 'warn',
     'simple-import-sort/exports': 'warn',
     'import/order': 'off',
+    'import/namespace': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     // Keep JSX/TS imports first for readability
   },

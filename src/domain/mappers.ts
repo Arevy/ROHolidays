@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { feastLevelToCross, fromAzisespalaFlag, preferHigherLevel } from './heuristics';
+import { feastLevelToCross, preferHigherLevel } from './heuristics';
 import { Event, EventLevel, EventSource } from './types';
 
 const slugify = (value: string) =>
@@ -21,15 +21,18 @@ type NagerHoliday = {
 };
 
 export function mapNagerToEvents(data: NagerHoliday[]): Event[] {
-  return data.map(item => ({
-    id: buildId('NAGER', item.date, item.localName ?? item.name),
-    dateISO: item.date,
-    title: item.localName ?? item.name,
-    kind: 'LEGAL',
-    level: null,
-    source: 'NAGER',
-    metadata: { types: item.types },
-  }));
+  return data.map(item => {
+    const metadata = item.types ? { types: item.types } : undefined;
+    const base: Event = {
+      id: buildId('NAGER', item.date, item.localName ?? item.name),
+      dateISO: item.date,
+      title: item.localName ?? item.name,
+      kind: 'LEGAL',
+      level: null,
+      source: 'NAGER',
+    };
+    return metadata ? { ...base, metadata } : base;
+  });
 }
 
 type OpenHolidaysItem = {
@@ -42,15 +45,19 @@ type OpenHolidaysItem = {
 export function mapOpenHolidaysToEvents(data: OpenHolidaysItem[]): Event[] {
   return data.map(item => {
     const title = item.name?.[0]?.text ?? 'Public Holiday';
-    return {
+    const metadata: Event['metadata'] = {
+      ...(item.type ? { type: item.type } : {}),
+      ...(item.endDate ? { endDate: item.endDate } : {}),
+    };
+    const base: Event = {
       id: buildId('OPENHOLIDAYS', item.startDate, title),
       dateISO: item.startDate,
       title,
       kind: 'LEGAL',
       level: null,
       source: 'OPENHOLIDAYS',
-      metadata: { type: item.type, endDate: item.endDate },
     };
+    return Object.keys(metadata).length > 0 ? { ...base, metadata } : base;
   });
 }
 
@@ -88,6 +95,16 @@ export function mapAzisespalaToEvents(data: AzisespalaItem[]): Event[] {
     // Effective noWashing: any cross level, source flag, or Sunday.
     const noWashing = level !== null || rawNoWashing || isSunday;
 
+    const metadata: Event['metadata'] = {
+      isHoliday: item.isHoliday,
+      color: item.color ?? null,
+      ...(item.text ? { text: item.text } : {}),
+      noWashing,
+      hasCross,
+      rawNoWashing,
+      isSunday,
+    };
+
     return {
       id: buildId('AZISESPALA', item.date, item.name),
       dateISO: item.date,
@@ -95,15 +112,7 @@ export function mapAzisespalaToEvents(data: AzisespalaItem[]): Event[] {
       kind: 'ORTHODOX',
       level,
       source: 'AZISESPALA',
-      metadata: {
-        isHoliday: item.isHoliday,
-        color: item.color,
-        text: item.text,
-        noWashing,
-        hasCross,
-        rawNoWashing,
-        isSunday,
-      },
+      metadata,
     };
   });
 }
@@ -119,7 +128,7 @@ export function mapOrthocalToEvents(data: OrthocalItem[]): Event[] {
     // Orthocal may miss feast_level; default to black cross to keep calendar visibility.
     level: feastLevelToCross(item.feast_level) ?? 'BLACK',
     source: 'ORTHOCAL',
-    metadata: { feast_level: item.feast_level },
+    metadata: { feast_level: item.feast_level ?? null },
   }));
 }
 

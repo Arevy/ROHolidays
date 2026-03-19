@@ -37,7 +37,7 @@ describe('mappers', () => {
   });
 
   it('maps azisespala red cross flag', () => {
-    const mapped = mapAzisespalaToEvents([{ date: '2025-04-20', name: 'Paști', isHoliday: true }]);
+    const mapped = mapAzisespalaToEvents([{ date: '2025-04-21', name: 'A doua zi de Pasti', isHoliday: true }]);
     expect(mapped[0]!.level).toBe('RED');
   });
 });

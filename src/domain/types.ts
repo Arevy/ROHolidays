@@ -2,6 +2,22 @@ export type EventKind = 'LEGAL' | 'ORTHODOX';
 export type EventLevel = 'RED' | 'BLACK' | null;
 export type EventSource = 'NAGER' | 'OPENHOLIDAYS' | 'AZISESPALA' | 'ORTHOCAL';
 
+export type EventMetadata = {
+  types?: string[];
+  type?: string;
+  endDate?: string;
+  feast_level?: string | null;
+  isHoliday?: boolean;
+  color?: string | null;
+  text?: string;
+  noWashing?: boolean;
+  hasCross?: boolean;
+  rawNoWashing?: boolean;
+  isSunday?: boolean;
+  approximated?: boolean;
+  note?: string;
+};
+
 export type Event = {
   id: string;
   dateISO: string; // UTC ISO date string (yyyy-mm-dd)
@@ -9,7 +25,7 @@ export type Event = {
   kind: EventKind;
   level: EventLevel;
   source: EventSource;
-  metadata?: Record<string, unknown>;
+  metadata?: EventMetadata;
 };
 
 export type NotificationSettings = {

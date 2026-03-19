@@ -1,13 +1,38 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeScreen from '../../features/home/HomeScreen';
-import CalendarScreen from '../../features/calendar/CalendarScreen';
-import SettingsScreen from '../../features/settings/SettingsScreen';
 import { Text } from 'react-native';
+import { AppErrorBoundary } from '../../ui/components/AppErrorBoundary';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+function UpcomingRoute() {
+  const Screen = require('../../features/home/HomeScreen').default as React.ComponentType;
+  return (
+    <AppErrorBoundary scope="upcoming-route">
+      <Screen />
+    </AppErrorBoundary>
+  );
+}
+
+function CalendarRoute() {
+  const Screen = require('../../features/calendar/CalendarScreen').default as React.ComponentType;
+  return (
+    <AppErrorBoundary scope="calendar-route">
+      <Screen />
+    </AppErrorBoundary>
+  );
+}
+
+function SettingsRoute() {
+  const Screen = require('../../features/settings/SettingsScreen').default as React.ComponentType;
+  return (
+    <AppErrorBoundary scope="settings-route">
+      <Screen />
+    </AppErrorBoundary>
+  );
+}
 
 function Tabs() {
   return (
@@ -20,24 +45,27 @@ function Tabs() {
       initialRouteName="Calendar">
       <Tab.Screen
         name="Următoare"
-        component={HomeScreen}
+        component={UpcomingRoute}
         options={{
           tabBarLabel: 'Următoare',
           tabBarIcon: () => <Text style={{ fontSize: 16 }}>⏭️</Text>,
+          tabBarAccessibilityLabel: 'Upcoming events tab',
         }}
       />
       <Tab.Screen
         name="Calendar"
-        component={CalendarScreen}
+        component={CalendarRoute}
         options={{
           tabBarIcon: () => <Text style={{ fontSize: 16 }}>📅</Text>,
+          tabBarAccessibilityLabel: 'Calendar tab',
         }}
       />
       <Tab.Screen
         name="Setări"
-        component={SettingsScreen}
+        component={SettingsRoute}
         options={{
           tabBarIcon: () => <Text style={{ fontSize: 16 }}>⚙️</Text>,
+          tabBarAccessibilityLabel: 'Settings tab',
         }}
       />
     </Tab.Navigator>

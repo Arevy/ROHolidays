@@ -12,10 +12,11 @@ export function useEvents(): UseQueryResult<Event[]> {
   return useQuery<Event[]>({
     queryKey: EVENTS_QUERY_KEY(today),
     queryFn: fetchAllEvents,
-    // 6h cache; when day changes it invalidates automatically via queryKey.
-    staleTime: 1000 * 60 * 60 * 6,
+    // [SENIOR_INSIGHT] "Stale-while-revalidate":
+    // serve cached data immediately, then refresh in background when stale.
+    staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60 * 24 * 3, // keep 3 days in cache
     refetchOnReconnect: true,
-    refetchOnMount: 'always',
+    refetchOnMount: true,
   });
 }

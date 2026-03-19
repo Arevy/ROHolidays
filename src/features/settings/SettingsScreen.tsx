@@ -1,147 +1,165 @@
-import React, { useEffect } from 'react';
-import { Button, Switch, Text, TextInput, View, StyleSheet, Alert, Pressable, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { useSettings } from '../../app/state/SettingsContext';
-import { useEvents } from '../../data/queries/events';
-import { scheduleNotifications } from '../../services/notifications';
+import React from 'react';
+import {
+  Alert,
+  Button,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+import { NotificationSettings } from '../../domain/types';
+import { useSettingsStore } from '../../app/state/useSettingsStore';
+
+function useNotificationSettings() {
+  const notification = useSettingsStore(state => state.settings.notification);
+  const patchNotification = useSettingsStore(state => state.patchNotification);
+  const resetNotification = useSettingsStore(state => state.resetNotification);
+  return { notification, patchNotification, resetNotification };
+}
 
 export default function SettingsScreen() {
-  const { settings, setSettings } = useSettings();
-  const { data: events } = useEvents();
+  const { notification, patchNotification, resetNotification } = useNotificationSettings();
 
-  useEffect(() => {
-    if (!events) return;
-    void scheduleNotifications({ events, settings: settings.notification }).catch(err =>
-      console.warn('scheduleNotifications', err),
-    );
-  }, [settings, events]);
-
-  const update = (path: keyof typeof settings.notification, value: unknown) => {
-    setSettings({
-      ...settings,
-      notification: {
-        ...settings.notification,
-        [path]: value,
-      },
-    });
+  const update = <K extends keyof NotificationSettings>(
+    key: K,
+    value: NotificationSettings[K],
+  ) => {
+    patchNotification({ [key]: value } as Pick<NotificationSettings, K>);
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.container}>
-      <Text style={styles.title}>Notificări locale</Text>
-      <Text style={styles.subtitle}>
-        Trimitem alerte locale (Notifee) pentru zile libere legale și sărbători ortodoxe, conform preferințelor de mai jos.
-      </Text>
+        <Text style={styles.title}>Local Notifications</Text>
+        <Text style={styles.subtitle}>
+          Notification rules are persisted instantly and applied globally.
+        </Text>
 
-      <Row
-        label="Notificări ON / OFF"
-        control={<Switch value={settings.notification.notificationsEnabled} onValueChange={v => update('notificationsEnabled', v)} />}
-      />
-      <Row
-        label="Alerte zile libere legale"
-        control={<Switch value={settings.notification.notifyLegal} onValueChange={v => update('notifyLegal', v)} />}
-      />
-      <Row
-        label="Alerte sărbători ortodoxe"
-        control={<Switch value={settings.notification.notifyOrthodox} onValueChange={v => update('notifyOrthodox', v)} />}
-      />
-
-      <Row
-        label="Nivel ortodox"
-        control={
-          <View style={styles.rowButtons}>
-            <LevelButton
-              title="Doar roșu"
-              active={settings.notification.orthodoxLevel === 'RED'}
-              onPress={() => update('orthodoxLevel', 'RED')}
-              color="#c1121f"
+        <Row
+          label="Notifications ON / OFF"
+          control={
+            <Switch
+              accessibilityLabel="Toggle notifications"
+              accessibilityRole="switch"
+              value={notification.notificationsEnabled}
+              onValueChange={v => update('notificationsEnabled', v)}
             />
-            <LevelButton
-              title="Roșu + negru"
-              active={settings.notification.orthodoxLevel === 'RED_BLACK'}
-              onPress={() => update('orthodoxLevel', 'RED_BLACK')}
-              color="#1d1d1f"
-            />
-          </View>
-        }
-      />
-
-      <Row
-        label="Ora notificare cu 1 zi înainte"
-        control={
-          <TextInput
-            keyboardType="number-pad"
-            value={String(settings.notification.dayBeforeHour)}
-            onChangeText={text => {
-              const n = Number(text);
-              const clamped = Math.min(23, Math.max(0, Number.isFinite(n) ? n : 0));
-              update('dayBeforeHour', clamped);
-            }}
-            style={styles.input}
-          />
-        }
-      />
-      <Row
-        label="Ora notificare în ziua evenimentului"
-        control={
-          <TextInput
-            keyboardType="number-pad"
-            value={String(settings.notification.sameDayHour)}
-            onChangeText={text => {
-              const n = Number(text);
-              const clamped = Math.min(23, Math.max(0, Number.isFinite(n) ? n : 0));
-              update('sameDayHour', clamped);
-            }}
-            style={styles.input}
-          />
-        }
-      />
-      <Row
-        label="Număr de zile programate în avans"
-        control={
-          <TextInput
-            keyboardType="number-pad"
-            value={String(settings.notification.lookAheadDays)}
-            onChangeText={text => {
-              const n = Number(text);
-              const clamped = Math.min(365, Math.max(1, Number.isFinite(n) ? n : 1));
-              update('lookAheadDays', clamped);
-            }}
-            style={styles.input}
-          />
-        }
-      />
-
-      <View style={{ marginTop: 12 }}>
-        <Button
-          title="Resetează la implicit"
-          color="#ef4444"
-          onPress={() => {
-            Alert.alert('Reset', 'Resetezi setările?', [
-              { text: 'Anulează', style: 'cancel' },
-              {
-                text: 'OK',
-                onPress: () =>
-                  setSettings({
-                    ...settings,
-                    notification: {
-                      notificationsEnabled: true,
-                      notifyLegal: true,
-                      notifyOrthodox: true,
-                      orthodoxLevel: 'RED',
-                      dayBeforeHour: 18,
-                      sameDayHour: 8,
-                      lookAheadDays: 90,
-                    },
-                  }),
-              },
-            ]);
-          }}
+          }
         />
-      </View>
-      <Text style={styles.hint}>
-        Notă: notificările sunt programate local; schimbările se reaplică când modifici oricare dintre setări.
-      </Text>
+        <Row
+          label="Legal holidays"
+          control={
+            <Switch
+              accessibilityLabel="Toggle legal holiday notifications"
+              accessibilityRole="switch"
+              value={notification.notifyLegal}
+              onValueChange={v => update('notifyLegal', v)}
+            />
+          }
+        />
+        <Row
+          label="Orthodox holidays"
+          control={
+            <Switch
+              accessibilityLabel="Toggle orthodox holiday notifications"
+              accessibilityRole="switch"
+              value={notification.notifyOrthodox}
+              onValueChange={v => update('notifyOrthodox', v)}
+            />
+          }
+        />
+
+        <Row
+          label="Orthodox level"
+          control={
+            <View style={styles.rowButtons}>
+              <LevelButton
+                title="Red only"
+                active={notification.orthodoxLevel === 'RED'}
+                onPress={() => update('orthodoxLevel', 'RED')}
+                color="#c1121f"
+              />
+              <LevelButton
+                title="Red + black"
+                active={notification.orthodoxLevel === 'RED_BLACK'}
+                onPress={() => update('orthodoxLevel', 'RED_BLACK')}
+                color="#1d1d1f"
+              />
+            </View>
+          }
+        />
+
+        <Row
+          label="Hour (1 day before)"
+          control={
+            <TextInput
+              accessibilityLabel="Hour one day before"
+              keyboardType="number-pad"
+              value={String(notification.dayBeforeHour)}
+              onChangeText={text => {
+                const n = Number(text);
+                const clamped = Math.min(23, Math.max(0, Number.isFinite(n) ? n : 0));
+                update('dayBeforeHour', clamped);
+              }}
+              style={styles.input}
+            />
+          }
+        />
+
+        <Row
+          label="Hour (same day)"
+          control={
+            <TextInput
+              accessibilityLabel="Hour on event day"
+              keyboardType="number-pad"
+              value={String(notification.sameDayHour)}
+              onChangeText={text => {
+                const n = Number(text);
+                const clamped = Math.min(23, Math.max(0, Number.isFinite(n) ? n : 0));
+                update('sameDayHour', clamped);
+              }}
+              style={styles.input}
+            />
+          }
+        />
+
+        <Row
+          label="Look-ahead days"
+          control={
+            <TextInput
+              accessibilityLabel="Look ahead days"
+              keyboardType="number-pad"
+              value={String(notification.lookAheadDays)}
+              onChangeText={text => {
+                const n = Number(text);
+                const clamped = Math.min(365, Math.max(1, Number.isFinite(n) ? n : 1));
+                update('lookAheadDays', clamped);
+              }}
+              style={styles.input}
+            />
+          }
+        />
+
+        <View style={styles.resetWrap}>
+          <Button
+            title="Reset defaults"
+            color="#ef4444"
+            onPress={() => {
+              Alert.alert('Reset', 'Reset notification settings to defaults?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'OK', onPress: resetNotification },
+              ]);
+            }}
+          />
+        </View>
+
+        <Text style={styles.hint}>
+          Changes are persisted in MMKV and applied without reopening the app.
+        </Text>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -169,6 +187,8 @@ function LevelButton({
 }) {
   return (
     <Pressable
+      accessibilityLabel={`Set orthodox level ${title}`}
+      accessibilityRole="button"
       onPress={onPress}
       style={[
         styles.levelButton,
@@ -197,12 +217,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: {
-    width: 64,
+    width: 72,
     padding: 8,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     borderRadius: 8,
     textAlign: 'center',
   },
+  resetWrap: { marginTop: 12 },
   hint: { color: '#475569', fontSize: 12, marginTop: 8 },
 });

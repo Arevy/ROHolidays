@@ -26,7 +26,26 @@ type Normalized = {
   hasCross: boolean;
 };
 
-function normalize(raw: RawDay, year: number): Normalized | null {
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord | null {
+  if (typeof value !== 'object' || value === null) return null;
+  return value as UnknownRecord;
+}
+
+function extractHolidayArray(input: unknown): RawDay[] | null {
+  if (Array.isArray(input)) {
+    return input as RawDay[];
+  }
+  const record = asRecord(input);
+  const holidays = record?.holidays;
+  if (Array.isArray(holidays)) {
+    return holidays as RawDay[];
+  }
+  return null;
+}
+
+function normalize(raw: RawDay): Normalized | null {
   const date = raw.date || raw.dateISO || raw.day;
   const name = raw.name || raw.title || raw.label || raw.text;
   if (!date || !name) return null;
@@ -60,7 +79,7 @@ export async function fetchAzisespala(year: number): Promise<Normalized[]> {
   const tryUrl = async (url: string): Promise<Normalized[] | null> => {
     try {
       const data = await fetchJson<unknown>(url, { timeoutMs: 10000, headers: { accept: 'application/json' } });
-      const arr = Array.isArray(data) ? data : Array.isArray((data as any)?.holidays) ? (data as any).holidays : null;
+      const arr = extractHolidayArray(data);
       let norm: Normalized[] | null = null;
 
       // Case 1: direct array
@@ -70,22 +89,28 @@ export async function fetchAzisespala(year: number): Promise<Normalized[]> {
 
       // Case 2: object keyed by months { "1": [...], "2": [...] }
       if (!norm || !norm.length) {
-        const obj = data as Record<string, unknown>;
-        const monthKeys = Object.keys(obj || {});
+        const obj = asRecord(data);
+        const monthKeys = Object.keys(obj ?? {});
         const looksLikeMonths =
           monthKeys.length &&
-          monthKeys.every(k => /^[0-9]+$/.test(k) && Array.isArray((obj as any)[k]));
+          monthKeys.every(k => {
+            if (!obj) return false;
+            return /^[0-9]+$/.test(k) && Array.isArray(obj[k]);
+          });
         if (looksLikeMonths) {
           const out: Normalized[] = [];
           for (const key of monthKeys) {
             const monthNum = parseInt(key, 10);
-            const days = (obj as any)[key] as RawDay[];
+            if (!obj) continue;
+            const daysValue = obj[key];
+            if (!Array.isArray(daysValue)) continue;
+            const days = daysValue as RawDay[];
             for (const d of days) {
               const dayNum = d.date || d.day || d.dateISO;
               if (!dayNum) continue;
               const pad = (n: number | string) => String(n).padStart(2, '0');
               const dateISO = `${year}-${pad(monthNum)}-${pad(dayNum)}`;
-              const base = normalize({ ...d, date: dateISO }, year);
+              const base = normalize({ ...d, date: dateISO });
               if (base) {
                 out.push(base);
               }

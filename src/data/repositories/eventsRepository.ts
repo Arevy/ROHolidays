@@ -43,12 +43,10 @@ async function loadOrthodox(year: number): Promise<Event[]> {
     console.warn('Azisespala failed, încercăm Orthocal', err);
   }
 
-  let orthocalAdded = false;
   try {
     const ortho = await fetchOrthocal(year);
     console.info('[eventsRepo] Orthocal ok', { year, count: ortho.length });
     batches.push(...mapOrthocalToEvents(ortho));
-    orthocalAdded = true;
   } catch (err) {
     console.warn('Orthocal failed, trying previous year fallback', err);
     // Fallback: use previous year dates as approximate fixed-date feasts.
@@ -61,7 +59,6 @@ async function loadOrthodox(year: number): Promise<Event[]> {
         date: item.date.replace(String(prevYear), String(year)),
       }));
       batches.push(...mapOrthocalToEvents(shifted).map(ev => ({ ...ev, metadata: { ...ev.metadata, approximated: true } })));
-      orthocalAdded = true;
     } catch (fallbackErr) {
       console.warn('Orthocal fallback failed as well', fallbackErr);
     }

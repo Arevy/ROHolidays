@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { dayjs } from '../../services/date';
 import { Event } from '../../domain/types';
+import { isNoWashingDay } from '../../domain/eventMetadata';
 
 type Props = {
   monthDate: string; // any date within the month
@@ -25,12 +26,12 @@ export function CalendarMonth({ monthDate, events, onSelectDay }: Props) {
     const hasRed = dayEvents.some(e => e.level === 'RED');
     const hasBlack = dayEvents.some(e => e.level === 'BLACK');
     const isLegal = dayEvents.some(e => e.kind === 'LEGAL');
-    const hasNoWashOnly = dayEvents.some(e => !e.level && (e.metadata as any)?.noWashing);
+    const hasNoWashOnly = dayEvents.some(e => !e.level && isNoWashingDay(e));
     const isSunday = dayjs(dateISO).day() === 0;
     const canWash =
       !isSunday &&
       dayEvents.length > 0 &&
-      dayEvents.every(e => !(e.metadata as any)?.noWashing);
+      dayEvents.every(e => !isNoWashingDay(e));
     const isToday = dayjs().isSame(dateISO, 'day');
 
     return { day, dateISO, hasRed, hasBlack, isLegal, hasNoWashOnly, canWash, isToday };
@@ -49,6 +50,12 @@ export function CalendarMonth({ monthDate, events, onSelectDay }: Props) {
           item ? (
             <Pressable
               key={idx}
+              accessibilityRole="button"
+              accessibilityLabel={`Day ${item.day}, ${item.dateISO}${
+                item.isLegal ? ', legal day off' : ''
+              }${item.hasRed ? ', red cross' : ''}${item.hasBlack ? ', black cross' : ''}${
+                item.hasNoWashOnly ? ', no washing day' : ''
+              }${item.canWash ? ', washing allowed' : ''}`}
               style={[
                 styles.day,
                 item.isLegal && styles.legal,
