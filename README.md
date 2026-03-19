@@ -1,65 +1,65 @@
 # ROHolidays (React Native CLI, New Architecture)
 
-Aplicație bare React Native (fără Expo) care afișează sărbători legale din România și calendar ortodox (cruce roșie/neagră), cu notificări locale programabile. New Architecture (Fabric + TurboModules + JSI) este activă pe ambele platforme; Hermes rămâne motorul JS implicit.
+A bare React Native app (no Expo) that displays Romanian public holidays and the Orthodox calendar (red/black cross), with configurable local notifications. New Architecture (Fabric + TurboModules + JSI) is enabled on both platforms; Hermes remains the default JS engine.
 
-## Prerechizite
-- Node >= 20.19.4 (testat pe 22.20.0; dacă ai probleme cu native deps, recomand 20 LTS).
-- Yarn (Corepack activat în repo, `packageManager: "yarn@3.6.4"`; linker setat pe `node-modules` în `.yarnrc.yml`).
-- iOS: Xcode + CocoaPods (`bundle install && bundle exec pod install` în `ios/`).
-- Android: Android SDK, emulator/ device, Java 17.
+## Prerequisites
+- Node >= 20.19.4 (tested on 22.20.0; if you hit native dependency issues, use Node 20 LTS).
+- Yarn (Corepack enabled in this repo, `packageManager: "yarn@3.6.4"`; linker is set to `node-modules` in `.yarnrc.yml`).
+- iOS: Xcode + CocoaPods (`bundle install && bundle exec pod install` in `ios/`).
+- Android: Android SDK, emulator/device, Java 17.
 
-## Comenzi de bază (Yarn-only)
-- Pornește Metro: `yarn start`
+## Basic commands (Yarn-only)
+- Start Metro: `yarn start`
 - Android: `yarn android`
-- iOS: `cd ios && bundle exec pod install` (prima dată), apoi `yarn ios`
+- iOS: `cd ios && bundle exec pod install` (first time), then `yarn ios`
 - Lint: `yarn lint`
-- Teste: `yarn test`
+- Tests: `yarn test`
 - Typecheck: `yarn typecheck`
 
-## Arhitectură
+## Architecture
 ```
 src/
-  app/        # AppProviders, navigație (React Navigation)
+  app/        # AppProviders, navigation (React Navigation)
   features/   # home, calendar, settings
-  data/       # http client, Zod schema, repository, TanStack Query hooks
-  domain/     # tipuri și mapări (cruce roșie/neagră, dedup)
-  services/   # notificări (Notifee), settings (AsyncStorage), date utils
-  ui/         # componente UI, theming
-android/ ios/ # proiecte native reale, newArchEnabled + Hermes ON
+  data/       # HTTP client, Zod schemas, repositories, TanStack Query hooks
+  domain/     # types and mappers (red/black cross, dedup)
+  services/   # notifications (Notifee), settings (AsyncStorage), date utils
+  ui/         # UI components, theming
+android/ ios/ # real native projects, newArchEnabled + Hermes ON
 ```
-- TanStack Query + persister în AsyncStorage (fallback la cache dacă rețeaua pică).
-- Clean-ish layering: data (fetch + validare), domain (mapări/heuristici), features (UI + useEvents).
-- Comentarii în fișierele native explică de ce New Architecture/Hermes rămân active.
+- TanStack Query + AsyncStorage persister (cache fallback when the network fails).
+- Clean-ish layering: data (fetch + validation), domain (mappers/heuristics), features (UI + useEvents).
+- Comments in native config files explain why New Architecture/Hermes stay enabled.
 
-## Surse de date
+## Data sources
 - Legal: `https://date.nager.at/api/v3/PublicHolidays/{year}/RO` (fallback: OpenHolidays).
-- Ortodox: `https://orthocal.info/api/feasts?year=YYYY&locale=ro`; listă specială 2025 red-cross: `https://azisespala.ro/data/holidays-2025.json`.
-- Model unificat `Event` include `kind`, `level` (RED/BLACK), `source`, `metadata`. Dedup by id; nivelul ortodox derivat heuristico-transparenț (vezi `src/domain/heuristics.ts`).
+- Orthodox: `https://orthocal.info/api/feasts?year=YYYY&locale=ro`; special 2025 red-cross list: `https://azisespala.ro/data/holidays-2025.json`.
+- Unified `Event` model includes `kind`, `level` (RED/BLACK), `source`, `metadata`. Dedup is by id; Orthodox level is derived transparently via heuristics (see `src/domain/heuristics.ts`).
 
-## Notificări locale (Notifee)
-- Permisiuni cerute la runtime; pe Android se creează canal `holidays`.
-- Se programează două notificări per eveniment (cu o zi înainte la ora X, în ziua evenimentului la ora Y). ID bazat pe `event.id` ca să evităm duplicate.
-- Settings persistate în AsyncStorage, re-programează notificările când modifici opțiunile.
+## Local notifications (Notifee)
+- Permissions are requested at runtime; on Android the `holidays` channel is created.
+- Two notifications are scheduled per event (one day before at hour X, and on the event day at hour Y). IDs are based on `event.id` to avoid duplicates.
+- Settings are persisted in AsyncStorage; notifications are rescheduled when settings change.
 
-## Background refresh (opțional)
-`react-native-background-fetch` nu este inclus pentru a evita setup nativ suplimentar. Stub-ul din `src/services/background.ts` indică pașii; dacă ai nevoie, instalează pachetul și completează integrarea (atenție: iOS e throttled, nu garantează execuție la oră fixă).
+## Background refresh (optional)
+`react-native-background-fetch` is not included to avoid extra native setup. The stub in `src/services/background.ts` shows the integration steps; if needed, install the package and complete the integration (note: iOS is throttled and does not guarantee exact-time execution).
 
 ## New Architecture & Hermes
-- Android: `android/gradle.properties` are `newArchEnabled=true` (Fabric/TurboModules) și `hermesEnabled=true` cu comentarii explicite.
-- iOS: `Podfile` setează `ENV['RCT_NEW_ARCH_ENABLED']='1'` și `:new_arch_enabled => true, :hermes_enabled => true` în `use_react_native!`.
-- Beneficii: latență UI mai mică, interop nativ prin JSI, viitor-compat (legacy renderer depreciat în RN 0.82+).
+- Android: `android/gradle.properties` has `newArchEnabled=true` (Fabric/TurboModules) and `hermesEnabled=true` with explicit comments.
+- iOS: `Podfile` sets `ENV['RCT_NEW_ARCH_ENABLED']='1'` and `:new_arch_enabled => true, :hermes_enabled => true` in `use_react_native!`.
+- Benefits: lower UI latency, native interop via JSI, future compatibility (legacy renderer deprecated in RN 0.82+).
 
-## Testare
-- Jest + React Native Testing Library; mock pentru fetch/Notifee/AsyncStorage în `jest.setup.js`.
-- Acoperire esențială: mapări cruce roșie/neagră, dedup, mappere surse (vezi `__tests__/domain.test.ts`).
+## Testing
+- Jest + React Native Testing Library; fetch/Notifee/AsyncStorage mocks in `jest.setup.js`.
+- Core coverage: red/black cross mapping, dedup, source mappers (see `__tests__/domain.test.ts`).
 
 ## Troubleshooting
-- Dacă Yarn se plânge de workspace root în home, asigură-te că există `yarn.lock` local (deja creat) și rulează cu `YARN_IGNORE_PATH=1`.
-- Xcode build: rulează `cd ios && bundle exec pod install` după orice schimbare de deps native.
-- Android new architecture: dacă întâmpini erori TurboModules/Fabric, curăță cu `cd android && ./gradlew clean` și reconstruieste.
-- Watchman indisponibil (ciocnire de permisiuni): rulează testele cu `JEST_DISABLE_WATCHMAN=1 yarn test --runInBand`.
+- If Yarn complains about workspace root from your home folder, make sure local `yarn.lock` exists (already created) and run with `YARN_IGNORE_PATH=1`.
+- Xcode build: run `cd ios && bundle exec pod install` after any native dependency change.
+- Android New Architecture: if you hit TurboModules/Fabric issues, clean with `cd android && ./gradlew clean` and rebuild.
+- If Watchman is unavailable (permissions conflict), run tests with `JEST_DISABLE_WATCHMAN=1 yarn test --runInBand`.
 
-## Limitări & transparență
-- Orthocal mapping spre roșu/negru este o euristică; UI menționează explicit posibilă diferență față de calendarul tipărit.
-- Azisespala acoperă doar 2025; pentru alți ani ne bazăm pe Orthocal.
-- Background refresh nu este activat by default (vezi secțiunea de mai sus).
+## Limitations & transparency
+- Orthocal red/black mapping is heuristic; the UI explicitly mentions it may differ from printed local calendars.
+- Azisespala covers only 2025; for other years the app relies on Orthocal.
+- Background refresh is not enabled by default (see section above).
