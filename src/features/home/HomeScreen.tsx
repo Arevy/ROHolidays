@@ -45,62 +45,63 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={{ flex: 1 }}>
-        <FlashList
-          data={visible}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => <EventListItem event={item} />}
-          // [SENIOR_INSIGHT] FlashList v2 dropped `estimatedItemSize`; it measures rows automatically.
-          // We tune drawDistance to smooth fast scroll while keeping memory usage predictable.
-          drawDistance={400}
-          style={{ flex: 1, backgroundColor: '#f8fafc' }}
-          contentContainerStyle={{ paddingBottom: 24, paddingTop: 0, flexGrow: 1, backgroundColor: '#f8fafc' }}
-          ListHeaderComponentStyle={{ backgroundColor: '#f8fafc' }}
-          ListFooterComponentStyle={{ backgroundColor: '#f8fafc' }}
-          onEndReachedThreshold={0.4}
-          onEndReached={() => {
-            if (pageSize < upcomingAll.length) {
-              setPageSize(prev => Math.min(prev + 30, upcomingAll.length));
-            }
-          }}
-          ListFooterComponent={
-            pageSize < upcomingAll.length ? (
-              <View style={{ paddingVertical: 12 }}>
-                <ActivityIndicator />
-                <Text style={{ textAlign: 'center', color: '#475569', marginTop: 4 }}>
-                  Loading more events...
-                </Text>
-              </View>
-            ) : null
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: '#f8fafc' }}
+      // Stack header + tab bar already handle vertical insets in this layout.
+      edges={['left', 'right']}>
+      <FlashList
+        data={visible}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <EventListItem event={item} />}
+        // [SENIOR_INSIGHT] FlashList v2 dropped `estimatedItemSize`; it measures rows automatically.
+        // We tune drawDistance to smooth fast scroll while keeping memory usage predictable.
+        drawDistance={400}
+        style={{ flex: 1, backgroundColor: '#f8fafc' }}
+        contentContainerStyle={{ paddingBottom: 8, paddingTop: 0, flexGrow: 1, backgroundColor: '#f8fafc' }}
+        ListHeaderComponentStyle={{ backgroundColor: '#f8fafc' }}
+        ListFooterComponentStyle={{ backgroundColor: '#f8fafc' }}
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (pageSize < upcomingAll.length) {
+            setPageSize(prev => Math.min(prev + 30, upcomingAll.length));
           }
-          bounces={false}
-          contentInsetAdjustmentBehavior="never"
-          ListHeaderComponent={
-            <View style={{ padding: 16, backgroundColor: '#f8fafc' }}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', textAlign: 'center' }}>
-                {dayjs(todayISO).format('dddd, DD MMMM YYYY')}
-              </Text>
-              <Text
-                style={{
-                  marginTop: 6,
-                  fontSize: 18,
-                  fontWeight: '700',
-                  textAlign: 'center',
-                  color: todayNoWash ? '#b91c1c' : '#16a34a',
-                }}>
-                {todayNoWash ? 'NU se spală haine azi' : 'Se pot spăla haine azi'}
-              </Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a', marginTop: 12, textAlign: 'center' }}>
-                Următoarele evenimente ({visible.length}/{upcomingAll.length})
-              </Text>
-              <Text style={{ color: '#475569', marginTop: 4, textAlign: 'center' }}>
-                Legal + Ortodox (cruce roșie/neagră). Numai cele cu impact (libere sau cu cruce).
+        }}
+        ListFooterComponent={
+          pageSize < upcomingAll.length ? (
+            <View style={{ paddingVertical: 12 }}>
+              <ActivityIndicator />
+              <Text style={{ textAlign: 'center', color: '#475569', marginTop: 4 }}>
+                Loading more events...
               </Text>
             </View>
-          }
-        />
-      </View>
+          ) : null
+        }
+        bounces={false}
+        contentInsetAdjustmentBehavior="never"
+        ListHeaderComponent={
+          <View style={{ padding: 16, backgroundColor: '#f8fafc' }}>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', textAlign: 'center' }}>
+              {dayjs(todayISO).format('dddd, DD MMMM YYYY')}
+            </Text>
+            <Text
+              style={{
+                marginTop: 6,
+                fontSize: 18,
+                fontWeight: '700',
+                textAlign: 'center',
+                color: todayNoWash ? '#b91c1c' : '#16a34a',
+              }}>
+              {todayNoWash ? 'NU se spală haine azi' : 'Se pot spăla haine azi'}
+            </Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a', marginTop: 12, textAlign: 'center' }}>
+              Următoarele evenimente ({visible.length}/{upcomingAll.length})
+            </Text>
+            <Text style={{ color: '#475569', marginTop: 4, textAlign: 'center' }}>
+              Legal + Ortodox (cruce roșie/neagră). Numai cele cu impact (libere sau cu cruce).
+            </Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }

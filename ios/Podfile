@@ -10,6 +10,20 @@ prepare_react_native_project!
 
 ENV['RCT_NEW_ARCH_ENABLED'] = '1' # Keep Fabric/TurboModules on iOS for parity with Android.
 
+def normalize_hermes_cli_path!
+  # CocoaPods can persist absolute HERMES_CLI_PATH values when the repo is moved.
+  # Force a repo-relative path so builds work on both simulator and real devices.
+  xcconfig_glob = File.join(__dir__, 'Pods', 'Target Support Files', 'Pods-ROHolidays', 'Pods-ROHolidays*.xcconfig')
+  Dir.glob(xcconfig_glob).each do |xcconfig_path|
+    content = File.read(xcconfig_path)
+    normalized = content.gsub(
+      /^HERMES_CLI_PATH\s*=.*$/,
+      'HERMES_CLI_PATH = ${PODS_ROOT}/../../node_modules/hermes-compiler/hermesc/osx-bin/hermesc'
+    )
+    File.write(xcconfig_path, normalized) if normalized != content
+  end
+end
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -34,5 +48,28 @@ target 'ROHolidays' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Keep Hermes CLI path stable even if project folder gets renamed/moved.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['HERMES_CLI_PATH'] = '${PODS_ROOT}/../../node_modules/hermes-compiler/hermesc/osx-bin/hermesc'
+        # Avoid Xcode explicit-module scanner failures when Swift pod modulemaps
+        # are generated during the same build (NitroMmkv/NitroModules/RCTSwiftUI).
+        build_config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        build_config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+      end
+    end
+
+    installer.aggregate_targets.map(&:user_project).uniq.each do |user_project|
+      user_project.targets.each do |user_target|
+        user_target.build_configurations.each do |build_config|
+          build_config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+          build_config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        end
+      end
+      user_project.save
+    end
+
+    normalize_hermes_cli_path!
   end
 end
